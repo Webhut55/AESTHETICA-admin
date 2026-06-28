@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aesthetica | Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], serif: ['Playfair Display', 'serif'] },
+                    colors: { offwhite: '#f9f9f9', dark: '#121212', muted: '#888888' }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #ffffff; color: #121212; }
+        [x-cloak] { display: none !important; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #fff; }
+        ::-webkit-scrollbar-thumb { background: #ddd; }
+    </style>
+</head>
+<body class="antialiased flex h-screen overflow-hidden" x-data="adminPanel()">
+
+    <aside class="w-64 border-r border-gray-200 h-full flex flex-col bg-offwhite">
+        <div class="p-8 border-b border-gray-200">
+            <h1 class="font-serif text-2xl tracking-tight">Aesthetica.</h1>
+            <p class="text-[10px] uppercase tracking-widest text-muted mt-2">Control Center</p>
+        </div>
+        <nav class="flex-1 py-6">
+            <a href="#" @click.prevent="tab = 'dashboard'" :class="tab === 'dashboard' ? 'border-dark text-dark' : 'border-transparent text-muted'" class="block px-8 py-3 text-sm font-medium border-l-2 hover:text-dark transition-colors">Archive (Products)</a>
+            <a href="#" @click.prevent="tab = 'orders'" :class="tab === 'orders' ? 'border-dark text-dark' : 'border-transparent text-muted'" class="block px-8 py-3 text-sm font-medium border-l-2 hover:text-dark transition-colors">Orders</a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto bg-white p-12">
+        
+        <div x-show="tab === 'dashboard'" x-cloak>
+            <div class="flex justify-between items-end mb-10 pb-4 border-b border-gray-200">
+                <h2 class="font-serif text-3xl">The Archive</h2>
+                <button @click="openProductModal()" class="bg-dark text-white px-6 py-2 text-xs uppercase tracking-widest hover:bg-black transition-colors">
+                    Add Object
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                <template x-for="(item, id) in products" :key="id">
+                    <div class="border border-gray-200 p-6 flex flex-col hover:border-dark transition-colors group">
+                        <div class="aspect-square bg-offwhite mb-6 relative overflow-hidden">
+                            <img :src="item.imageUrl" class="w-full h-full object-cover mix-blend-multiply" @error="$event.target.style.display='none'">
+                            <div x-show="item.offerLabel" class="absolute top-3 left-3 bg-dark text-white text-[10px] px-2 py-1 uppercase tracking-widest" x-text="item.offerLabel"></div>
+                        </div>
+                        <h3 class="font-serif text-xl mb-1" x-text="item.name"></h3>
+                        
+                        <div class="flex justify-between items-end mt-4 pt-4 border-t border-gray-100">
+                            <div>
+                                <span class="text-sm font-medium" x-text="'1x: ₹' + item.price"></span>
+                                <div x-show="item.comboPrice" class="text-xs text-muted mt-1" x-text="'2x: ₹' + item.comboPrice"></div>
+                                <div x-show="item.comboPrice3" class="text-xs text-muted" x-text="'3x: ₹' + item.comboPrice3"></div>
+                            </div> <div class="flex gap-4">
+                                <button @click="editProduct(id)" class="text-xs uppercase tracking-widest text-muted hover:text-dark">Edit</button>
+                                <button @click="deleteProduct(id)" class="text-xs uppercase tracking-widest text-red-500 hover:text-red-700">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <div x-show="tab === 'orders'" x-cloak>
+            <div class="flex justify-between items-end mb-10 pb-4 border-b border-gray-200">
+                <h2 class="font-serif text-3xl">Active Orders</h2>
+            </div>
+            
+            <div class="space-y-4">
+                <template x-for="(order, id) in orders" :key="id">
+                    <div class="border border-gray-200 p-6 flex justify-between items-center hover:border-dark transition-colors">
+                        <div class="flex gap-5 items-center">
+                            <!-- Payment proof thumbnail, click to zoom. Only renders when present so old orders without a proof field are unaffected. -->
+                            <img
+                                x-show="order.paymentProof"
+                                :src="order.paymentProof"
+                                @click="zoomImage = order.paymentProof"
+                                class="w-16 h-16 object-cover border border-gray-200 cursor-zoom-in flex-shrink-0"
+                                alt="Payment proof"
+                            >
+                            <div>
+                                <div class="text-xs uppercase tracking-widest text-muted mb-1" x-text="order.orderId || id"></div>
+                                <h4 class="font-serif text-lg mb-1" x-text="order.customer ? order.customer.fullName : 'Guest User'"></h4>
+                                <p class="text-sm text-muted" x-text="order.customer ? `${order.customer.phone} | ${order.customer.district}, ${order.customer.state}` : 'No Shipping Details Provided'"></p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm font-medium mb-2" x-text="'₹' + (order.totalPaid || '0.00')"></div>
+                            <select x-model="order.status" @change="updateOrderStatus(id, $event.target.value)" class="text-xs uppercase tracking-widest border border-gray-300 p-2 focus:outline-none focus:border-dark bg-transparent">
+                                <!-- Legacy statuses, kept as-is for any orders already on this scheme -->
+                                <option value="Payment Verification">Payment Verification</option>
+                                <option value="Processing">Processing</option>
+                                <option value="Delivered">Delivered</option>
+                                <option value="Cancelled">Cancelled</option>
+                                <!-- Current storefront statuses (index.html writes "Pending Verification" / reads "Confirmed") -->
+                                <option value="Pending Verification">Pending Verification</option>
+                                <option value="Confirmed">Confirmed</option>
+                                <option value="Shipped">Shipped</option>
+                                <option value="Rejected">Rejected</option>
+                            </select>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </main>
+
+    <!-- Fullscreen payment proof zoom -->
+    <div x-show="zoomImage" x-cloak class="fixed inset-0 z-[70] bg-black/90 flex items-center justify-center p-6" @click="zoomImage = null" x-transition.opacity>
+        <img :src="zoomImage" class="max-h-full max-w-full object-contain">
+    </div>
+
+    <div x-show="productModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-end p-0">
+        <div class="absolute inset-0 bg-dark/20 backdrop-blur-sm" @click="productModal = false"></div>
+        
+        <div class="relative bg-white h-full w-full max-w-md border-l border-gray-200 shadow-2xl flex flex-col" @click.stop>
+            <div class="p-8 border-b border-gray-200 flex justify-between items-center bg-offwhite">
+                <h3 class="font-serif text-xl">Archive Object</h3>
+                <button @click="productModal = false" class="text-muted hover:text-dark">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-8">
+                
+                <div class="bg-gray-50 border border-gray-200 p-4 mb-8">
+                    <h4 class="text-[10px] uppercase tracking-widest text-muted mb-3">Auto-Import Entity</h4>
+                    <div class="flex gap-2">
+                        <input type="text" x-model="importUrl" placeholder="Paste Amazon/Flipkart URL..." class="flex-1 border border-gray-300 p-2 text-xs focus:outline-none focus:border-dark bg-white">
+                        <button @click="simulateImport" class="bg-dark text-white px-4 text-[10px] uppercase tracking-widest hover:bg-black transition-colors">Extract</button>
+                    </div>
+                    <p class="text-[10px] text-muted mt-2">Extracts photos & details. Price must be set manually.</p>
+                </div>
+
+                <form @submit.prevent="saveProduct" class="space-y-6">
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-muted mb-2">Object Name</label>
+                        <input type="text" x-model="form.name" required class="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-dark transition-colors text-sm bg-transparent rounded-none">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-muted mb-2">Description</label>
+                        <textarea x-model="form.description" rows="2" class="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-dark transition-colors text-sm bg-transparent rounded-none resize-none"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-muted mb-2">Upload Image <span class="lowercase text-gray-400">opt</span></label>
+                        <input type="file" accept="image/*" @change="handleImageUpload" class="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-dark transition-colors text-sm bg-transparent rounded-none file:mr-4 file:py-2 file:px-4 file:border-0 file:text-xs file:uppercase file:tracking-widest file:bg-dark file:text-white hover:file:bg-black cursor-pointer">
+                        <div x-show="form.imageUrl" class="mt-2 text-[10px] text-green-600 truncate">Image loaded successfully.</div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs uppercase tracking-widest text-muted mb-2">Price (1) ₹</label>
+                            <input type="number" x-model="form.price" required class="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-dark transition-colors text-sm bg-transparent rounded-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs uppercase tracking-widest text-muted mb-2">Price (2) ₹ <span class="lowercase text-gray-400">opt</span></label>
+                            <input type="number" x-model="form.comboPrice" class="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-dark transition-colors text-sm bg-transparent rounded-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs uppercase tracking-widest text-muted mb-2">Price (3) ₹ <span class="lowercase text-gray-400">opt</span></label>
+                            <input type="number" x-model="form.comboPrice3" class="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-dark transition-colors text-sm bg-transparent rounded-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-muted mb-2">Offer Label (e.g. 10% OFF)</label>
+                        <input type="text" x-model="form.offerLabel" placeholder="Leave blank for none" class="w-full border-b border-gray-300 py-2 focus:outline-none focus:border-dark transition-colors text-sm bg-transparent rounded-none">
+                    </div>
+
+                    <button type="submit" class="w-full bg-dark text-white py-4 mt-4 text-xs tracking-widest uppercase font-medium hover:bg-black transition-colors">
+                        Commit to Archive
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('adminPanel', () => ({
+                dbUrl: 'https://dedrop-store-default-rtdb.firebaseio.com',
+                tab: 'dashboard',
+                products: {},
+                orders: {},
+                
+                productModal: false,
+                importUrl: '',
+                editingProductId: null,
+                zoomImage: null,
+                
+                form: { name: '', description: '', imageUrl: '', price: '', comboPrice: '', comboPrice3: '', offerLabel: '' },
+
+                init() {
+                    this.fetchData();
+                    setInterval(() => this.fetchData(), 15000);
+                },
+
+                async fetchData() {
+                    try {
+                        const [prodRes, ordRes] = await Promise.all([
+                            fetch(`${this.dbUrl}/products.json`),
+                            fetch(`${this.dbUrl}/orders.json`)
+                        ]);
+                        this.products = (await prodRes.json()) || {};
+                        this.orders = (await ordRes.json()) || {};
+                    } catch (e) {
+                        console.error('Data sync failed', e);
+                    }
+                },
+
+                openProductModal() {
+                    this.editingProductId = null;
+                    this.form = { name: '', description: '', imageUrl: '', price: '', comboPrice: '', comboPrice3: '', offerLabel: '' };
+                    this.importUrl = '';
+                    this.productModal = true;
+                },
+
+                editProduct(id) {
+                    this.editingProductId = id;
+                    const item = this.products[id];
+                    this.form = { ...item };
+                    if(!this.form.comboPrice) this.form.comboPrice = '';
+                    if(!this.form.comboPrice3) this.form.comboPrice3 = '';
+                    if(!this.form.offerLabel) this.form.offerLabel = '';
+                    this.importUrl = '';
+                    this.productModal = true;
+                },
+
+                handleImageUpload(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.form.imageUrl = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                },
+
+                async simulateImport() {
+                    if(!this.importUrl.trim()) return alert('Paste a valid URL first.');
+                    
+                    try {
+                        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(this.importUrl)}`;
+                        const res = await fetch(proxyUrl);
+                        const data = await res.json();
+                        
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(data.contents, 'text/html');
+                        
+                        let name = '';
+                        let imageUrl = '';
+                        let description = '';
+                        
+                        if (this.importUrl.includes('amazon')) {
+                            name = doc.querySelector('#productTitle')?.textContent?.trim();
+                            imageUrl = doc.querySelector('#landingImage')?.getAttribute('src') || doc.querySelector('#imgBlkFront')?.getAttribute('src');
+                            description = doc.querySelector('#feature-bullets')?.textContent?.replace(/\s+/g, ' ')?.trim();
+                        } else if (this.importUrl.includes('flipkart')) {
+                            name = doc.querySelector('span.B_NuCI')?.textContent?.trim() || doc.querySelector('.VU-Tz5')?.textContent?.trim();
+                            imageUrl = doc.querySelector('img._396cs4')?.getAttribute('src') || doc.querySelector('img.DByuf4')?.getAttribute('src');
+                            if (!name) name = doc.querySelector('meta[property="og:title"]')?.getAttribute('content');
+                            if (!imageUrl) imageUrl = doc.querySelector('meta[property="og:image"]')?.getAttribute('content');
+                        } else {
+                            name = doc.querySelector('meta[property="og:title"]')?.getAttribute('content') || doc.querySelector('title')?.textContent;
+                            imageUrl = doc.querySelector('meta[property="og:image"]')?.getAttribute('content');
+                            description = doc.querySelector('meta[property="og:description"]')?.getAttribute('content') || doc.querySelector('meta[name="description"]')?.getAttribute('content');
+                        }
+
+                        if (name) this.form.name = name.substring(0, 100);
+                        if (imageUrl) this.form.imageUrl = imageUrl;
+                        if (description) this.form.description = description.substring(0, 300);
+                        
+                        alert('Data extracted. Please verify and add pricing.');
+                    } catch (e) {
+                        alert('Extraction failed due to CORS or structure changes. Please input manually.');
+                    }
+                },
+
+                async saveProduct() {
+                    const id = this.editingProductId ? this.editingProductId : 'AESTH-OBJ-' + Date.now();
+                    try {
+                        await fetch(`${this.dbUrl}/products/${id}.json`, {
+                            method: 'PUT',
+                            body: JSON.stringify(this.form)
+                        });
+                        this.productModal = false;
+                        this.fetchData();
+                    } catch (e) {
+                        alert('Failed to save object.');
+                    }
+                },
+
+                async deleteProduct(id) {
+                    if(!confirm('Purge object from archive?')) return;
+                    try {
+                        await fetch(`${this.dbUrl}/products/${id}.json`, { method: 'DELETE' });
+                        this.fetchData();
+                    } catch (e) {
+                        alert('Deletion failed.');
+                    }
+                },
+
+                async updateOrderStatus(id, newStatus) {
+                    if (newStatus === 'Rejected') {
+                        if (!confirm('This permanently deletes the order from the database — no record will be kept. Continue?')) {
+                            this.fetchData(); // revert the dropdown to its real stored value
+                            return;
+                        }
+                        try {
+                            await fetch(`${this.dbUrl}/orders/${id}.json`, { method: 'DELETE' });
+                            delete this.orders[id];
+                        } catch (e) {
+                            alert('Delete failed.');
+                            this.fetchData();
+                        }
+                        return;
+                    }
+
+                    try {
+                        await fetch(`${this.dbUrl}/orders/${id}/status.json`, {
+                            method: 'PUT',
+                            body: JSON.stringify(newStatus)
+                        });
+                    } catch (e) {
+                        alert('Status update failed.');
+                        this.fetchData();
+                    }
+                }
+            }));
+        });
+    </script>
+</body>
+</html>
